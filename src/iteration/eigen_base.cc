@@ -22,16 +22,24 @@ void EigenBase<dim>::do_iterations
  std_cxx11::shared_ptr<IGBase<dim> > ig_ptr,
  std_cxx11::shared_ptr<MGBase<dim> > mg_ptr)
 {
-  // override this function per derived class. Will be called in Iterations class
+  if (!this->do_nda)
+  {
+    // assemble system matrices for transport equation
+    equ_ptrs.back()->assemble_bilinear_form ();
+    // initialize fission process
+    initialize_fiss_process (sflxes_proc, equ_ptrs.front());
+    // perform eigenvalue iterations
+    eigen_iterations (sflxes_proc, equ_ptrs, ig_ptr, mg_ptr);
+  }
 }
 
 template <int dim>
 void EigenBase<dim>::initialize_fiss_process
 (std::vector<Vector<double> > &sflxes_proc,
- std::vector<std_cxx11::shared_ptr<EquationBase<dim> > > &equ_ptrs)
+ std_cxx11::shared_ptr<EquationBase<dim> > &equ_ptr)
 {
   // calculate fission source based on initial scalar fluxes
-  fiss_src = equ_ptrs[0]->estimate_fiss_src (sflxes_proc);
+  fiss_src = equ_ptr->estimate_fiss_src (sflxes_proc);
   // initialize keff
   keff = 1.0;
 }
@@ -81,9 +89,9 @@ double EigenBase<dim>::estimate_k_diff ()
 }
 
 template <int dim>
-void EigenBase<dim>::get_keff (double &k)
+double EigenBase<dim>::get_keff ()
 {
-  k = keff;
+  return keff;
 }
 
 template class EigenBase<2>;

@@ -7,61 +7,85 @@
 
 using namespace dealii;
 
+//! This class provides common functionalities for iteration related classes.
+/*!
+ Currently, it is mainly for providing functionalities on estimating vector
+ differences.
+ 
+ \author Weixiong
+ \date 2017/08~10
+ \todo Implement iteration counting for every type of iteration in calculations.
+ */
 template <int dim>
 class IterationBase
 {
 public:
+  /*!
+   Class constructor.
+   
+   \param prm Const dealii::ParameterHandler object.
+   */
   IterationBase (const ParameterHandler &prm);
+  
+  //! Virtual class destructor.
   virtual ~IterationBase ();
 
 protected:
-  /** \brief Function to measure the relative difference between two sets of PETSc
+  /**
+   * Function to measure the relative difference between two sets of PETSc
    * Vectors
    *
-   * \parameters Two sets of PETSc Vectors with the same length
+   * \param Two sets of PETSc Vectors with the same length
    * \return relative difference in vector l1 norm measure
    */
   double estimate_phi_diff
   (std::vector<PETScWrappers::MPI::Vector*> &phis_newer,
    std::vector<PETScWrappers::MPI::Vector*> &phis_older);
   
-  /** \brief Function to measure the relative difference between two PETSc
+  /** Function to measure the relative difference between two PETSc
    * Vectors
    *
-   * \parameters Two PETSc Vectors with the same length
+   * \param Two PETSc Vectors with the same length
    * \return relative difference in vector l1 norm measure
    */
   double estimate_phi_diff
   (PETScWrappers::MPI::Vector* phi_newer,
    PETScWrappers::MPI::Vector* phi_older);
   
-  /** \brief Function to measure the relative difference between two sets of PETSc
-   * Vectors
+  /**
+   * Function to measure the relative difference between two PETSc MPI Vectors.
    *
-   * \parameters Two sets of PETSc Vectors with the same length
+   * \param Two sets of PETSc Vectors with the same length
    * \return relative difference in vector l1 norm measure
    */
   double estimate_phi_diff
   (std::vector<Vector<double> > &phis_newer,
    std::vector<Vector<double> > &phis_older);
   
-  /** \brief Function to measure the relative difference between two PETSc
-   * Vectors
+  /**
+   * Function to measure the relative difference between two sets of deal.II 
+   * Vectors. Note that though all vectors live on current processor, broadcast
+   * is performed to obtain global results.
    *
-   * \parameters Two PETSc Vectors with the same length
+   * \param Two deal.II Vectors with the same length
    * \return relative difference in vector l1 norm measure
    */
   double estimate_phi_diff
   (Vector<double> &phi_newer, Vector<double> &phi_older);
   
-  const unsigned int n_group;
-  const bool is_eigen_problem;
-  const bool do_nda;
+  const unsigned int n_group;//!< Number of groups.
+  const bool is_eigen_problem;//!< Boolean to determine if it's eigenvalue problem.
+  const bool do_nda;//!< Boolean to determine if NDA is used.
   
   double total_calculation_time; /**< total time for calculations+assemblies*/
   unsigned int ct_ho_iters; /**< HO iteration counts*/
   unsigned int ct_nda_iters; /**< NDA iteration counts*/
   
+  //! ostream on processor with rank to be 0.
+  /*!
+   Details can be found <a href="https://www.dealii.org/8.5.0/doxygen/deal.II/cl
+   assConditionalOStream.html" style="color:blue"><b>here</b></a>.
+   */
   ConditionalOStream pcout;
 };
 

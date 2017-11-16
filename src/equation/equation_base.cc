@@ -1,9 +1,5 @@
-#include <deal.II/fe/fe_values.h>
-#include <boost/algorithm/string.hpp>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/grid/cell_id.h>
-#include <deal.II/lac/petsc_solver.h>
-#include <deal.II/lac/solver_bicgstab.h>
 #include <deal.II/base/utilities.h>
 
 #include <algorithm>
@@ -56,7 +52,6 @@ void EquationBase<dim>::process_input
 {
   // mesh related
   {
-    relative_position_to_id = msh_ptr->get_id_map ();
     if (have_reflective_bc)
       is_reflective_bc = msh_ptr->get_reflective_bc_map ();
   }
@@ -89,8 +84,8 @@ void EquationBase<dim>::process_input
     {
       is_material_fissile = mat_ptr->get_fissile_id_map ();
       all_nusigf = mat_ptr->get_nusigf ();
-      all_ksi_nusigf = mat_ptr->get_ksi_nusigf ();
-      all_ksi_nusigf_per_ster = mat_ptr->get_ksi_nusigf_per_ster ();
+      all_chi_nusigf = mat_ptr->get_chi_nusigf ();
+      all_chi_nusigf_per_ster = mat_ptr->get_chi_nusigf_per_ster ();
     }
     else
     {
@@ -105,9 +100,7 @@ void EquationBase<dim>::initialize_cell_iterators_this_proc
 (const std_cxx11::shared_ptr<MeshGenerator<dim> > msh_ptr,
  const DoFHandler<dim> &dof_handler)
 {
-  msh_ptr->get_relevant_cell_iterators (dof_handler,
-                                        local_cells,
-                                        is_cell_at_bd);
+  msh_ptr->get_relevant_cell_iterators (dof_handler, local_cells);
 }
 
 template <int dim>
@@ -218,14 +211,8 @@ void EquationBase<dim>::assemble_closure_bilinear_form
 (std_cxx11::shared_ptr<EquationBase<dim> > ho_equ_ptr,
  bool do_assembly)
 {
-  // the input is pointer to HO equation pointer s.t. we can have estimation of
-  // corrections
-  if (do_assembly)
-  {
-    AssertThrow (equation_name=="nda",
-                 ExcMessage("only instance for NDA calls this function"));
-    // TODO: fill this up in to-be-created NDABase<dim>
-  }
+  AssertThrow (equation_name=="nda",
+               ExcMessage("only instance for NDA calls this function"));
 }
 
 template <int dim>
@@ -266,7 +253,7 @@ void EquationBase<dim>::assemble_volume_boundary_bilinear_form ()
                                     streaming_at_qp, collision_at_qp,
                                     g, i_dir);
       
-      if (is_cell_at_bd[ic])
+      if (cell->at_boundary())
         for (unsigned int fn=0; fn<GeometryInfo<dim>::faces_per_cell; ++fn)
           if (cell->at_boundary(fn))
           {
@@ -541,7 +528,7 @@ void EquationBase<dim>::scale_fiss_transfer_matrices (double keff)
     if (is_material_fissile[m])
       for (unsigned int gin=0; gin<n_group; ++gin)
         for (unsigned int g=0; g<n_group; ++g)
-          tmp[gin][g] = all_ksi_nusigf_per_ster[m][gin][g] / keff;
+          tmp[gin][g] = all_chi_nusigf_per_ster[m][gin][g] / keff;
     scaled_fiss_transfer_per_ster[m] = tmp;
   }
 }
@@ -566,7 +553,7 @@ void EquationBase<dim>::assemble_linear_form
         integrate_scattering_linear_form (cell, cell_rhs,
                                           sflxes_proc,
                                           g, i_dir);
-        if (is_cell_at_bd[ic])
+        if (cell->at_boundary())
           for (unsigned int fn=0; fn<GeometryInfo<dim>::faces_per_cell; ++fn)
             if (cell->at_boundary(fn))
             {

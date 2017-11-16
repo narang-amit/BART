@@ -29,14 +29,26 @@ void MGBase<dim>::do_iterations
   // the following assertion in ALL derived class of MGBase.
   AssertThrow (!this->is_eigen_problem,
                ExcMessage("This function shall not be called if it's eigen prob."));
-  
-  // override this function per derived class
+  // purpose of overriding do_iteration is such that we provide another outer
+  // iteration here if NDA is used
+  if (this->do_nda)
+  {
+    AssertThrow (equ_ptrs.size()==2,
+                 ExcMessage("There should be two equation pointers if do NDA"));
+    // assemble bilinear forms of available equations
+  }
+  else
+  {
+    AssertThrow (equ_ptrs.size()==1,
+                 ExcMessage("There should be one equation pointer without NDA"));
+    // assemble bilinear forms of available equations
+    equ_ptrs.back()->assemble_bilinear_form ();
+    // multigroup iterations. Note we would not need to override mg_iterations
+    // until we want to do JFNK
+    this->mg_iterations (sflxes_proc, equ_ptrs, ig_ptr);
+  }
 }
 
-// virtual function for all multigroup iteration method. It has to be overriden
-// per derived class of MGBase. If it's fixed source problem, it will be called
-// internally in do_iterations. Otherwise, it will be called externally in EigenBase
-// instances.
 template <int dim>
 void MGBase<dim>::mg_iterations
 (std::vector<Vector<double> > &sflxes_proc,
@@ -53,12 +65,6 @@ void MGBase<dim>::mg_iterations
   thermal_iterations (sflxes_proc, equ_ptrs, ig_ptr);
 }
 
-/** virtual function for solving nonthermal groups.
- 
- Usually, nonthermal groups have no upscattering. So this function is a group-by-
- group one-pass solving until reaching the thermal group. It will not be called 
- if algorithms like JFNK are called
- */
 template <int dim>
 void MGBase<dim>::nonthermal_solves
 (std::vector<Vector<double> > &sflxes_proc,
@@ -67,12 +73,6 @@ void MGBase<dim>::nonthermal_solves
 {
 }
 
-/** virtual function for solving thermal groups iteratively.
- 
- Thermal groups have upscattering for applications like LWR. So this function is
- to solve for thermal groups iteratively. It will not be called if algorithms like
- JFNK are called
- */
 template <int dim>
 void MGBase<dim>::thermal_iterations
 (std::vector<Vector<double> > &sflxes_proc,
