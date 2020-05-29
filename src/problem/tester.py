@@ -1,7 +1,10 @@
-import parameters
+from parameters import Standard
 
-parameters.setFEPolynomialDegree(4)
-parameters.setSpatialMax([1,2,3,4,5])
-parameters.setTransportModel(True)
+parser = Standard()
 
-parameters.saveAs("temp")
+parser.setFEPolynomialDegree(4)
+parser.setSpatialMax([1,2,3,4,5])
+parser.snapshot()
+parser.setTransportModel(True)
+
+parser.saveAs("temp/inputSamples")
